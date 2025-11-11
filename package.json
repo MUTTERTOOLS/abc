@@ -1,0 +1,19 @@
+{
+  "name": "abc",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tencentcloud-sdk-nodejs-cloudstudio": "^4.1.71"
+  },
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^5.9.3"
+  }
+}
