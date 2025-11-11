@@ -16,4 +16,4 @@ jobs:
           ALIST_SPACE_KEY: ${{ secrets.ALIST_SPACE_KEY }}
           SECRET_ID: ${{ secrets.SECRET_ID }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
-        run: echo "ALIST_SPACE_KEY length: ${#ALIST_SPACE_KEY}"
+          secret: ${{ secrets }}
