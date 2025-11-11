@@ -8,6 +8,7 @@ on:
 jobs:
   run-script:
     runs-on: ubuntu-latest
+    environment: SecretId
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -15,3 +16,7 @@ jobs:
           node-version: '20'
       - run: npm install
       - run: npm run deploy
+        env: 
+          ALIST_SPACE_KEY: ${{ secrets.ALIST_SPACE_KEY }}
+          SECRET_ID: ${{ secrets.SECRET_ID }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
