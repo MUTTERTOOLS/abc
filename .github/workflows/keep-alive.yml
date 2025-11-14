@@ -13,5 +13,6 @@ jobs:
     environment: SecretId
     steps:
       - uses: actions/checkout@v4
-      - run: ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null user@host ${{ secrets.SSH_URL }}
-      - run: echo "SSH connection established in the background."
+      - name: Keep workspace alive
+        run: |
+          ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null ${{ secrets.SSH_URL }} "echo 'Keep-alive ping at $(date)'"
