@@ -13,6 +13,5 @@ jobs:
     environment: SecretId
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-      - run: ssh ${{ secrets.SSH_URL }}
+      - run: ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null user@host ${{ secrets.SSH_URL }}
       - run: echo "SSH connection established in the background."
