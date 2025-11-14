@@ -26,8 +26,8 @@ export default {
     console.log(`[${timestamp}] Config: repo=${repo}, workflow=${workflowFile}, branch=${branch}`);
 
     try {
-      // GitHub API 可以使用 workflow 文件名（如 keep-alive.yml）或 workflow ID
-      // 如果使用文件名，需要确保格式正确（只是文件名，不包含路径）
+      // 根据 GitHub API 文档，可以直接使用文件名触发 workflow
+      // API 格式: /repos/{owner}/{repo}/actions/workflows/{workflow_file}/dispatches
       const apiUrl = `https://api.github.com/repos/${repo}/actions/workflows/${workflowFile}/dispatches`;
       console.log(`[${timestamp}] Calling GitHub API: ${apiUrl}`);
 
@@ -48,6 +48,74 @@ export default {
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`[${timestamp}] GitHub API error: ${response.status}`, errorText);
+        
+        // 如果是 404，尝试获取 workflow ID 再试一次
+        if (response.status === 404 && isNaN(workflowFile)) {
+          console.log(`[${timestamp}] Workflow not found by filename, trying to get workflow ID...`);
+          
+          try {
+            // 获取 workflows 列表
+            const workflowsUrl = `https://api.github.com/repos/${repo}/actions/workflows`;
+            const workflowsResponse = await fetch(workflowsUrl, {
+              headers: {
+                'Accept': 'application/vnd.github+json',
+                'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
+                'X-GitHub-Api-Version': '2022-11-28',
+                'User-Agent': 'Cloudflare-Worker-KeepAlive/1.0',
+              },
+            });
+
+            if (workflowsResponse.ok) {
+              const workflowsData = await workflowsResponse.json();
+              const workflow = workflowsData.workflows?.find(
+                w => w.path === `.github/workflows/${workflowFile}` || w.name === workflowFile
+              );
+              
+              if (workflow) {
+                const workflowId = workflow.id.toString();
+                console.log(`[${timestamp}] Found workflow ID: ${workflowId}, retrying with ID...`);
+                
+                // 使用 workflow ID 重试
+                const retryUrl = `https://api.github.com/repos/${repo}/actions/workflows/${workflowId}/dispatches`;
+                const retryResponse = await fetch(retryUrl, {
+                  method: 'POST',
+                  headers: {
+                    'Accept': 'application/vnd.github+json',
+                    'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
+                    'X-GitHub-Api-Version': '2022-11-28',
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Cloudflare-Worker-KeepAlive/1.0',
+                  },
+                  body: JSON.stringify({
+                    ref: branch,
+                  }),
+                });
+
+                if (retryResponse.ok) {
+                  const retryData = await retryResponse.json().catch(() => ({}));
+                  console.log(`[${timestamp}] Successfully triggered workflow using ID`, retryData);
+                  
+                  return new Response(JSON.stringify({ 
+                    success: true, 
+                    timestamp,
+                    message: 'Workflow triggered successfully (using workflow ID)',
+                    repo,
+                    workflowFile,
+                    workflowId,
+                    branch,
+                  }), {
+                    headers: { 'Content-Type': 'application/json' },
+                  });
+                } else {
+                  const retryErrorText = await retryResponse.text();
+                  throw new Error(`Retry with workflow ID also failed: ${retryResponse.status} ${retryErrorText}`);
+                }
+              }
+            }
+          } catch (retryError) {
+            console.error(`[${timestamp}] Failed to retry with workflow ID:`, retryError);
+          }
+        }
         
         // 如果是 404，提供更详细的错误信息
         if (response.status === 404) {
@@ -73,7 +141,7 @@ export default {
         timestamp,
         message: 'Workflow triggered successfully',
         repo,
-        workflow: workflowFile,
+        workflowFile,
         branch,
       }), {
         headers: { 'Content-Type': 'application/json' },
@@ -86,7 +154,7 @@ export default {
         error: error.message,
         config: {
           repo,
-          workflow: workflowFile,
+          workflowFile,
           branch,
         },
       }), {
