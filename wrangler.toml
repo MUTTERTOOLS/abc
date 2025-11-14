@@ -1,4 +1,4 @@
-name = "keep-alive-worker"
+name = "abc"
 main = "worker/keep-alive.js"
 compatibility_date = "2024-01-01"
 
