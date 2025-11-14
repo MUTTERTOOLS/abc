@@ -22,6 +22,7 @@ jobs:
             
             if [ -z \"\$PORT_CHECK\" ]; then
               echo 'Port 5244 is not in use, starting alist...';
+              cd /workspace/programming-language-demo
               pnpm alist;
             else
               echo 'Port 5244 is already in use, skipping alist start.';
