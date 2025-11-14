@@ -1,0 +1,25 @@
+name = "keep-alive-worker"
+main = "worker/keep-alive.js"
+compatibility_date = "2024-01-01"
+
+# Cron Triggers - 每9分钟执行一次
+# Cloudflare Workers 的 cron 比 GitHub Actions 更精准
+# 格式: 分钟 小时 日 月 星期
+# */9 * * * * 表示每9分钟执行一次
+[triggers]
+crons = ["*/9 * * * *"]
+
+# 环境变量（需要在 Cloudflare Dashboard 中设置）
+# GITHUB_REPO: 仓库名称，格式为 "owner/repo"
+# GITHUB_TOKEN: GitHub Personal Access Token (需要 workflow 权限)
+# WORKFLOW_FILE: workflow 文件名，例如 "keep-alive.yml"
+# GITHUB_BRANCH: 分支名称，默认为 "main"（可选）
+
+# 开发环境配置
+[env.development]
+name = "keep-alive-worker-dev"
+
+# 生产环境配置
+[env.production]
+name = "keep-alive-worker-prod"
+

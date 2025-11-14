@@ -2,8 +2,8 @@ name: Keep Workspace Alive with SSH
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '*/9 * * * *'
+  # schedule:
+    # - cron: '*/9 * * * *'
     # - cron: '*/9 4-16 * * *' # 12:00-00:00 每9分钟运行一次
 
 jobs:
