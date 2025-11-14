@@ -12,6 +12,19 @@ jobs:
     timeout-minutes: 350 
     environment: SecretId
     steps:
-      - name: Keep workspace alive
+      - name: keep-alive
         run: |
-          ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null ${{ secrets.SSH_URL }} "echo 'Keep-alive ping at $(date)'"
+          ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null ${{ secrets.SSH_URL }} "
+            echo '=== Keep-alive ping at $(date) ===';
+            
+            # 检查 5244 端口是否被使用
+            PORT_CHECK=\$(lsof -i :5244 2>/dev/null || ss -tuln | grep :5244 || netstat -tuln 2>/dev/null | grep :5244);
+            
+            if [ -z \"\$PORT_CHECK\" ]; then
+              echo 'Port 5244 is not in use, starting alist...';
+              pnpm alist;
+            else
+              echo 'Port 5244 is already in use, skipping alist start.';
+              echo \"Port status: \$PORT_CHECK\";
+            fi
+          "
