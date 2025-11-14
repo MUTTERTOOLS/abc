@@ -19,3 +19,16 @@ jobs:
           ALIST_SPACE_KEY: ${{ secrets.ALIST_SPACE_KEY }}
           SECRET_ID: ${{ secrets.SECRET_ID }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      - name: Trigger keep-alive workflow
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'keep-alive.yml',
+              ref: context.ref || 'main'
+            });
+            console.log('Keep-alive workflow (keep-alive.yml) triggered successfully');
