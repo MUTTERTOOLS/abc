@@ -3,9 +3,10 @@ main = "worker/keep-alive.js"
 compatibility_date = "2024-01-01"
 
 # Cron Triggers - 每9分钟执行一次
-# Cloudflare Workers 的 cron 比 GitHub Actions 更精准
+# Cloudflare Workers 的 cron 使用 UTC 时区
 # 格式: 分钟 小时 日 月 星期
-# */9 * * * * 表示每9分钟执行一次
+# */9 * * * * 表示每9分钟执行一次（在每小时的 0, 9, 18, 27, 36, 45, 54 分钟触发）
+# 注意：Cloudflare Dashboard 显示的时间是 UTC 时间
 [triggers]
 crons = ["*/9 * * * *"]
 
@@ -22,4 +23,20 @@ name = "keep-alive-worker-dev"
 # 生产环境配置
 [env.production]
 name = "keep-alive-worker-prod"
+
+# Observability 配置 - 启用日志
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
 

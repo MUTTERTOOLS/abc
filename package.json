@@ -8,7 +8,8 @@
     "test": "tsx src/test.ts",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
-    "worker:deploy:prod": "wrangler deploy --env production"
+    "worker:deploy:prod": "wrangler deploy --env production",
+    "worker:trigger": "wrangler dev --test-scheduled"
   },
   "author": "",
   "license": "ISC",
@@ -20,6 +21,6 @@
     "@types/node": "^24.10.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.48.0"
   }
 }
