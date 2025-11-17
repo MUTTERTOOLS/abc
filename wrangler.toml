@@ -1,5 +1,5 @@
 name = "keep-alive-worker"
-main = "worker/keep-alive.js"
+main = "worker/keep-alive.ts"
 compatibility_date = "2024-01-01"
 
 # Cron Triggers - 每9分钟执行一次

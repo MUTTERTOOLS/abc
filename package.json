@@ -14,11 +14,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "tencentcloud-sdk-nodejs-cloudstudio": "^4.1.71"
+    "hono": "^4.6.11"
   },
   "type": "module",
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251117.0",
     "@types/node": "^24.10.0",
+    "tencentcloud-sdk-nodejs-cloudstudio": "^4.1.71",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "wrangler": "^4.48.0"
