@@ -12,19 +12,11 @@ interface Env {
   GITHUB_TOKEN: string;
   WORKFLOW_FILE: string;
   GITHUB_BRANCH?: string;
+
+  KEEP_ALIVE_KV: KVNamespace;
 }
 
 // GitHub API 响应类型
-interface Workflow {
-  id: number;
-  name: string;
-  path: string;
-}
-
-interface WorkflowsResponse {
-  workflows: Workflow[];
-}
-
 interface SuccessResponse {
   success: true;
   timestamp: string;
@@ -78,68 +70,6 @@ async function triggerWorkflowByName(
       const errorText = await response.text();
       console.error(`[${timestamp}] GitHub API error: ${response.status}`, errorText);
       
-      // 如果是 404，尝试获取 workflow ID 再试一次
-      if (response.status === 404 && isNaN(Number(workflowFile))) {
-        console.log(`[${timestamp}] Workflow not found by filename, trying to get workflow ID...`);
-        
-        try {
-          // 获取 workflows 列表
-          const workflowsUrl = `https://api.github.com/repos/${repo}/actions/workflows`;
-          const workflowsResponse = await fetch(workflowsUrl, {
-            headers: {
-              'Accept': 'application/vnd.github+json',
-              'Authorization': `Bearer ${token}`,
-              'X-GitHub-Api-Version': '2022-11-28',
-              'User-Agent': 'Cloudflare-Worker-KeepAlive/1.0',
-            },
-          });
-
-          if (workflowsResponse.ok) {
-            const workflowsData = (await workflowsResponse.json()) as WorkflowsResponse;
-            const workflow = workflowsData.workflows?.find(
-              (w) => w.path === `.github/workflows/${workflowFile}` || w.name === workflowFile
-            );
-            
-            if (workflow) {
-              const workflowId = workflow.id.toString();
-              console.log(`[${timestamp}] Found workflow ID: ${workflowId}, retrying with ID...`);
-              
-              // 使用 workflow ID 重试
-              const retryUrl = `https://api.github.com/repos/${repo}/actions/workflows/${workflowId}/dispatches`;
-              const retryResponse = await fetch(retryUrl, {
-                method: 'POST',
-                headers: {
-                  'Accept': 'application/vnd.github+json',
-                  'Authorization': `Bearer ${token}`,
-                  'X-GitHub-Api-Version': '2022-11-28',
-                  'Content-Type': 'application/json',
-                  'User-Agent': 'Cloudflare-Worker-KeepAlive/1.0',
-                },
-                body: JSON.stringify({
-                  ref: branch,
-                }),
-              });
-
-              if (retryResponse.ok) {
-                const retryData = (await retryResponse.json().catch(() => ({}))) as Record<string, unknown>;
-                console.log(`[${timestamp}] Successfully triggered workflow using ID`, retryData);
-                return { success: true, workflowId };
-              } else {
-                const retryErrorText = await retryResponse.text();
-                return { 
-                  success: false, 
-                  error: `Retry with workflow ID also failed: ${retryResponse.status} ${retryErrorText}` 
-                };
-              }
-            }
-          }
-        } catch (retryError) {
-          const error = retryError as Error;
-          console.error(`[${timestamp}] Failed to retry with workflow ID:`, error);
-          return { success: false, error: error.message };
-        }
-      }
-      
       // 如果是 404，提供更详细的错误信息
       if (response.status === 404) {
         return {
@@ -190,7 +120,7 @@ async function triggerWorkflow(env: Env): Promise<Response> {
   console.log(`[${timestamp}] Config: repo=${repo}, workflow=${workflowFile}, branch=${branch}`);
 
   try {
-    // 首先尝试触发 keep-alive workflow
+    // 触发 keep-alive workflow
     const result = await triggerWorkflowByName(repo, workflowFile, branch, env.GITHUB_TOKEN, timestamp);
     
     if (result.success) {
@@ -206,28 +136,11 @@ async function triggerWorkflow(env: Env): Promise<Response> {
       return Response.json(successResponse);
     }
     
-    // 如果 keep-alive 失败，尝试触发 deploy.yml
-    console.log(`[${timestamp}] Keep-alive workflow failed, trying to trigger deploy.yml as fallback...`);
-    const deployResult = await triggerWorkflowByName(repo, 'deploy.yml', branch, env.GITHUB_TOKEN, timestamp);
-    
-    if (deployResult.success) {
-      const successResponse: SuccessResponse = {
-        success: true,
-        timestamp,
-        message: 'Keep-alive workflow failed, but deploy.yml triggered successfully',
-        repo,
-        workflowFile: 'deploy.yml',
-        branch,
-        workflowId: deployResult.workflowId,
-      };
-      return Response.json(successResponse);
-    }
-    
-    // 两个都失败了
+    // Workflow 触发失败
     const errorResponse: ErrorResponse = {
       success: false,
       timestamp,
-      error: `Both workflows failed. Keep-alive error: ${result.error}. Deploy error: ${deployResult.error}`,
+      error: result.error || 'Failed to trigger workflow',
       config: {
         repo,
         workflowFile,

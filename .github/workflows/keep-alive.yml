@@ -11,8 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 350 
     environment: SecretId
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: keep-alive
+        id: ssh-keep-alive
+        continue-on-error: true
         run: |
           ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null ${{ secrets.SSH_URL }} "
             echo '=== Keep-alive ping at $(date) ===';
@@ -29,3 +34,17 @@ jobs:
               echo \"Port status: \$PORT_CHECK\";
             fi
           "
+      - name: Trigger deploy on SSH failure
+        if: steps.ssh-keep-alive.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            console.log('SSH connection failed, triggering deploy.yml workflow...');
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy.yml',
+              ref: context.ref || 'main'
+            });
+            console.log('Deploy workflow triggered successfully');
