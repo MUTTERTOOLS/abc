@@ -46,28 +46,14 @@ interface ErrorResponse {
   };
 }
 
-// 触发 workflow 的核心函数
-async function triggerWorkflow(env: Env): Promise<Response> {
-  const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] Triggering keep-alive workflow`);
-
-  // 验证必要的环境变量
-  if (!env.GITHUB_REPO) {
-    throw new Error('GITHUB_REPO environment variable is required');
-  }
-  if (!env.GITHUB_TOKEN) {
-    throw new Error('GITHUB_TOKEN environment variable is required');
-  }
-  if (!env.WORKFLOW_FILE) {
-    throw new Error('WORKFLOW_FILE environment variable is required');
-  }
-
-  const repo = env.GITHUB_REPO;
-  const workflowFile = env.WORKFLOW_FILE;
-  const branch = env.GITHUB_BRANCH || 'main';
-  
-  console.log(`[${timestamp}] Config: repo=${repo}, workflow=${workflowFile}, branch=${branch}`);
-
+// 通用的触发 workflow 函数
+async function triggerWorkflowByName(
+  repo: string,
+  workflowFile: string,
+  branch: string,
+  token: string,
+  timestamp: string
+): Promise<{ success: boolean; error?: string; workflowId?: string }> {
   try {
     // 根据 GitHub API 文档，可以直接使用文件名触发 workflow
     // API 格式: /repos/{owner}/{repo}/actions/workflows/{workflow_file}/dispatches
@@ -78,7 +64,7 @@ async function triggerWorkflow(env: Env): Promise<Response> {
       method: 'POST',
       headers: {
         'Accept': 'application/vnd.github+json',
-        'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
+        'Authorization': `Bearer ${token}`,
         'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json',
         'User-Agent': 'Cloudflare-Worker-KeepAlive/1.0',
@@ -102,7 +88,7 @@ async function triggerWorkflow(env: Env): Promise<Response> {
           const workflowsResponse = await fetch(workflowsUrl, {
             headers: {
               'Accept': 'application/vnd.github+json',
-              'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
+              'Authorization': `Bearer ${token}`,
               'X-GitHub-Api-Version': '2022-11-28',
               'User-Agent': 'Cloudflare-Worker-KeepAlive/1.0',
             },
@@ -124,7 +110,7 @@ async function triggerWorkflow(env: Env): Promise<Response> {
                 method: 'POST',
                 headers: {
                   'Accept': 'application/vnd.github+json',
-                  'Authorization': `Bearer ${env.GITHUB_TOKEN}`,
+                  'Authorization': `Bearer ${token}`,
                   'X-GitHub-Api-Version': '2022-11-28',
                   'Content-Type': 'application/json',
                   'User-Agent': 'Cloudflare-Worker-KeepAlive/1.0',
@@ -137,59 +123,118 @@ async function triggerWorkflow(env: Env): Promise<Response> {
               if (retryResponse.ok) {
                 const retryData = (await retryResponse.json().catch(() => ({}))) as Record<string, unknown>;
                 console.log(`[${timestamp}] Successfully triggered workflow using ID`, retryData);
-                
-                const successResponse: SuccessResponse = {
-                  success: true,
-                  timestamp,
-                  message: 'Workflow triggered successfully (using workflow ID)',
-                  repo,
-                  workflowFile,
-                  workflowId,
-                  branch,
-                };
-                
-                return Response.json(successResponse);
+                return { success: true, workflowId };
               } else {
                 const retryErrorText = await retryResponse.text();
-                throw new Error(`Retry with workflow ID also failed: ${retryResponse.status} ${retryErrorText}`);
+                return { 
+                  success: false, 
+                  error: `Retry with workflow ID also failed: ${retryResponse.status} ${retryErrorText}` 
+                };
               }
             }
           }
         } catch (retryError) {
           const error = retryError as Error;
           console.error(`[${timestamp}] Failed to retry with workflow ID:`, error);
+          return { success: false, error: error.message };
         }
       }
       
       // 如果是 404，提供更详细的错误信息
       if (response.status === 404) {
-        throw new Error(
-          `Workflow not found. Please check:\n` +
-          `1. GITHUB_REPO is correct (format: owner/repo)\n` +
-          `2. WORKFLOW_FILE is correct (filename only, e.g. "keep-alive.yml")\n` +
-          `3. The workflow file exists in .github/workflows/ directory\n` +
-          `4. The workflow has workflow_dispatch trigger enabled\n` +
-          `5. GitHub token has proper permissions\n` +
-          `API Response: ${errorText}`
-        );
+        return {
+          success: false,
+          error: `Workflow not found. Please check:\n` +
+            `1. GITHUB_REPO is correct (format: owner/repo)\n` +
+            `2. WORKFLOW_FILE is correct (filename only, e.g. "${workflowFile}")\n` +
+            `3. The workflow file exists in .github/workflows/ directory\n` +
+            `4. The workflow has workflow_dispatch trigger enabled\n` +
+            `5. GitHub token has proper permissions\n` +
+            `API Response: ${errorText}`
+        };
       }
       
-      throw new Error(`GitHub API error: ${response.status} ${errorText}`);
+      return { success: false, error: `GitHub API error: ${response.status} ${errorText}` };
     }
 
     const responseData = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-    console.log(`[${timestamp}] Successfully triggered workflow`, responseData);
+    console.log(`[${timestamp}] Successfully triggered workflow ${workflowFile}`, responseData);
+    return { success: true };
+  } catch (error) {
+    const err = error as Error;
+    console.error(`[${timestamp}] Error triggering ${workflowFile}:`, err);
+    return { success: false, error: err.message };
+  }
+}
+
+// 触发 workflow 的核心函数
+async function triggerWorkflow(env: Env): Promise<Response> {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] Triggering keep-alive workflow`);
+
+  // 验证必要的环境变量
+  if (!env.GITHUB_REPO) {
+    throw new Error('GITHUB_REPO environment variable is required');
+  }
+  if (!env.GITHUB_TOKEN) {
+    throw new Error('GITHUB_TOKEN environment variable is required');
+  }
+  if (!env.WORKFLOW_FILE) {
+    throw new Error('WORKFLOW_FILE environment variable is required');
+  }
+
+  const repo = env.GITHUB_REPO;
+  const workflowFile = env.WORKFLOW_FILE;
+  const branch = env.GITHUB_BRANCH || 'main';
+  
+  console.log(`[${timestamp}] Config: repo=${repo}, workflow=${workflowFile}, branch=${branch}`);
+
+  try {
+    // 首先尝试触发 keep-alive workflow
+    const result = await triggerWorkflowByName(repo, workflowFile, branch, env.GITHUB_TOKEN, timestamp);
     
-    const successResponse: SuccessResponse = {
-      success: true,
+    if (result.success) {
+      const successResponse: SuccessResponse = {
+        success: true,
+        timestamp,
+        message: 'Workflow triggered successfully',
+        repo,
+        workflowFile,
+        branch,
+        workflowId: result.workflowId,
+      };
+      return Response.json(successResponse);
+    }
+    
+    // 如果 keep-alive 失败，尝试触发 deploy.yml
+    console.log(`[${timestamp}] Keep-alive workflow failed, trying to trigger deploy.yml as fallback...`);
+    const deployResult = await triggerWorkflowByName(repo, 'deploy.yml', branch, env.GITHUB_TOKEN, timestamp);
+    
+    if (deployResult.success) {
+      const successResponse: SuccessResponse = {
+        success: true,
+        timestamp,
+        message: 'Keep-alive workflow failed, but deploy.yml triggered successfully',
+        repo,
+        workflowFile: 'deploy.yml',
+        branch,
+        workflowId: deployResult.workflowId,
+      };
+      return Response.json(successResponse);
+    }
+    
+    // 两个都失败了
+    const errorResponse: ErrorResponse = {
+      success: false,
       timestamp,
-      message: 'Workflow triggered successfully',
-      repo,
-      workflowFile,
-      branch,
+      error: `Both workflows failed. Keep-alive error: ${result.error}. Deploy error: ${deployResult.error}`,
+      config: {
+        repo,
+        workflowFile,
+        branch,
+      },
     };
-    
-    return Response.json(successResponse);
+    return Response.json(errorResponse, { status: 500 });
   } catch (error) {
     const err = error as Error;
     console.error(`[${timestamp}] Error:`, err);
