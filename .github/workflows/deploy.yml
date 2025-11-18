@@ -1,8 +1,8 @@
 name: deploy
 on:
   workflow_dispatch:  # 👈 允许手动触发
-  schedule:
-    - cron:  '0 22 * * *'  # 早上6点执行
+  # schedule:
+  #   - cron:  '0 22 * * *'  # 早上6点执行
 
 jobs:
   run-script:
