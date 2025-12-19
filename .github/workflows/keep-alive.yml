@@ -14,6 +14,12 @@ jobs:
     permissions:
       contents: read
       actions: write
+    env:
+      ALIST_SPACE_KEY: ${{ secrets.ALIST_SPACE_KEY }}
+      SECRET_ID: ${{ secrets.SECRET_ID }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      SSH_URL: ${{ secrets.SSH_URL }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -26,7 +32,4 @@ jobs:
 
       - name: keep-alive
         id: ssh-keep-alive
-        env:
-          SSH_URL: ${{ secrets.SSH_URL }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx tsx src/keep-alive.ts

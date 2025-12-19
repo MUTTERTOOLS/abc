@@ -1,6 +1,6 @@
 name: deploy
 on:
-  workflow_dispatch:  # 👈 允许手动触发
+  workflow_dispatch: # 👈 允许手动触发
   # schedule:
   #   - cron:  '0 22 * * *'  # 早上6点执行
 
@@ -11,14 +11,16 @@ jobs:
     permissions:
       contents: read
       actions: write
+    env:
+      ALIST_SPACE_KEY: ${{ secrets.ALIST_SPACE_KEY }}
+      SECRET_ID: ${{ secrets.SECRET_ID }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      SSH_URL: ${{ secrets.SSH_URL }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
       - run: npm install
       - run: npm run deploy
-        env: 
-          ALIST_SPACE_KEY: ${{ secrets.ALIST_SPACE_KEY }}
-          SECRET_ID: ${{ secrets.SECRET_ID }}
-          SECRET_KEY: ${{ secrets.SECRET_KEY }}
