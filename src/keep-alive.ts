@@ -63,9 +63,18 @@ function connectAndRun(
       host,
       port,
       username,
+      tryKeyboard: true, // 尝试键盘交互认证（即使为空）
+      readyTimeout: 20000,
     };
 
     conn
+      .on(
+        "keyboard-interactive",
+        (name, instructions, instructionsLang, prompts, finish) => {
+          // 对于无需密码的场景，直接返回空回答
+          finish(prompts.map(() => ""));
+        }
+      )
       .on("ready", async () => {
         console.log("SSH Connection ready.");
         console.log(`=== Keep-alive ping at ${new Date().toISOString()} ===`);
