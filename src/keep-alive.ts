@@ -96,11 +96,12 @@ function connectAndRun(
           console.log("Port 5244 is not in use, starting alist...");
 
           // Step 2: Start alist
+          // 使用 nohup 和 & 在后台运行，并将输出重定向到 /dev/null 防止阻塞
           const startCmd =
-            "cd /workspace/programming-language-demo && pnpm alist";
+            "cd /workspace/programming-language-demo && nohup pnpm alist >/dev/null 2>&1 &";
 
           await execCommand(conn, startCmd);
-          console.log("alist process finished.");
+          console.log("alist process started in background.");
           conn.end();
           resolve();
         } catch (err) {
