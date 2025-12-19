@@ -31,7 +31,7 @@ async function main() {
     if (GITHUB_TOKEN && REPO_OWNER && REPO_NAME) {
       console.log("Attempting to trigger deploy workflow...");
 
-      triggerWorkflow(
+      await triggerWorkflow(
         REPO_OWNER,
         REPO_NAME,
         "deploy.yml",
@@ -44,9 +44,6 @@ async function main() {
         "Missing GITHUB_TOKEN or repository info, cannot trigger deploy workflow."
       );
     }
-
-    // Exit with code 1 to mark this run as failed
-    process.exit(1);
   }
 }
 
