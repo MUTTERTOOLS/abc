@@ -1,13 +1,5 @@
 import { cloudstudio } from "tencentcloud-sdk-nodejs-cloudstudio";
-import process from 'node:process'
-
-const SECRET_ID = process.env.SECRET_ID;
-const SECRET_KEY = process.env.SECRET_KEY;
-const ALIST_SPACE_KEY = process.env.ALIST_SPACE_KEY;
-
-if (!SECRET_ID || !SECRET_KEY || !ALIST_SPACE_KEY) {
-  throw new Error("Missing environment variables");
-}
+import { ALIST_SPACE_KEY, SECRET_ID, SECRET_KEY } from "./env";
 
 enum WorkspaceStatus {
   RUNNING = "RUNNING",
@@ -32,7 +24,9 @@ if (!res.Data) {
 }
 
 // 获取指定的工作空间
-const alistWorkspace = res.Data.find((item) => item.SpaceKey === ALIST_SPACE_KEY);
+const alistWorkspace = res.Data.find(
+  (item) => item.SpaceKey === ALIST_SPACE_KEY
+);
 
 if (!alistWorkspace?.Status) {
   throw new Error("No workspace status");
@@ -45,7 +39,7 @@ if (alistWorkspace.Status === WorkspaceStatus.RUNNING) {
   const runRes = await client.RunWorkspace({
     SpaceKey: ALIST_SPACE_KEY,
   });
-  console.log('Alist workspace is running.')
+  console.log("Alist workspace is running.");
 } else if (alistWorkspace.Status === WorkspaceStatus.INVALID) {
   console.log("Alist workspace is invalid");
 } else {

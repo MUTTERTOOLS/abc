@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "deploy": "tsx src/index.ts",
+    "deploy": "tsx src/deploy.ts",
     "test": "tsx src/test.ts",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
@@ -14,15 +14,18 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "hono": "^4.6.11"
+    "@octokit/rest": "^22.0.1",
+    "hono": "^4.11.1",
+    "ssh2": "^1.17.0"
   },
   "type": "module",
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20251117.0",
-    "@types/node": "^24.10.0",
+    "@cloudflare/workers-types": "^4.20251219.0",
+    "@types/node": "^24.10.4",
+    "@types/ssh2": "^1.15.5",
     "tencentcloud-sdk-nodejs-cloudstudio": "^4.1.71",
-    "tsx": "^4.20.6",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "wrangler": "^4.48.0"
+    "wrangler": "^4.56.0"
   }
 }

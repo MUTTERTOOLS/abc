@@ -3,8 +3,8 @@
  * 通过 GitHub API 触发 workflow 来执行 SSH keep-alive
  */
 
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
+import { Hono } from "hono";
+import { cors } from "hono/cors";
 
 // Cloudflare Workers 环境变量类型定义
 interface Env {
@@ -38,6 +38,8 @@ interface ErrorResponse {
   };
 }
 
+import { Octokit } from "@octokit/rest";
+
 // 通用的触发 workflow 函数
 async function triggerWorkflowByName(
   repo: string,
@@ -47,53 +49,45 @@ async function triggerWorkflowByName(
   timestamp: string
 ): Promise<{ success: boolean; error?: string; workflowId?: string }> {
   try {
-    // 根据 GitHub API 文档，可以直接使用文件名触发 workflow
-    // API 格式: /repos/{owner}/{repo}/actions/workflows/{workflow_file}/dispatches
-    const apiUrl = `https://api.github.com/repos/${repo}/actions/workflows/${workflowFile}/dispatches`;
-    console.log(`[${timestamp}] Calling GitHub API: ${apiUrl}`);
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': `Bearer ${token}`,
-        'X-GitHub-Api-Version': '2022-11-28',
-        'Content-Type': 'application/json',
-        'User-Agent': 'Cloudflare-Worker-KeepAlive/1.0',
-      },
-      body: JSON.stringify({
-        ref: branch,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[${timestamp}] GitHub API error: ${response.status}`, errorText);
-      
-      // 如果是 404，提供更详细的错误信息
-      if (response.status === 404) {
-        return {
-          success: false,
-          error: `Workflow not found. Please check:\n` +
-            `1. GITHUB_REPO is correct (format: owner/repo)\n` +
-            `2. WORKFLOW_FILE is correct (filename only, e.g. "${workflowFile}")\n` +
-            `3. The workflow file exists in .github/workflows/ directory\n` +
-            `4. The workflow has workflow_dispatch trigger enabled\n` +
-            `5. GitHub token has proper permissions\n` +
-            `API Response: ${errorText}`
-        };
-      }
-      
-      return { success: false, error: `GitHub API error: ${response.status} ${errorText}` };
+    const [owner, repoName] = repo.split("/");
+    if (!owner || !repoName) {
+      throw new Error(`Invalid repo format: ${repo}. Expected owner/repo`);
     }
 
-    const responseData = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-    console.log(`[${timestamp}] Successfully triggered workflow ${workflowFile}`, responseData);
+    const octokit = new Octokit({ auth: token });
+    console.log(`[${timestamp}] Calling GitHub API via Octokit`);
+
+    await octokit.actions.createWorkflowDispatch({
+      owner,
+      repo: repoName,
+      workflow_id: workflowFile,
+      ref: branch,
+    });
+
+    console.log(
+      `[${timestamp}] Successfully triggered workflow ${workflowFile}`
+    );
     return { success: true };
   } catch (error) {
-    const err = error as Error;
+    const err = error as any;
     console.error(`[${timestamp}] Error triggering ${workflowFile}:`, err);
-    return { success: false, error: err.message };
+
+    // 如果是 404，提供更详细的错误信息
+    if (err.status === 404) {
+      return {
+        success: false,
+        error:
+          `Workflow not found. Please check:\n` +
+          `1. GITHUB_REPO is correct (format: owner/repo)\n` +
+          `2. WORKFLOW_FILE is correct (filename only, e.g. "${workflowFile}")\n` +
+          `3. The workflow file exists in .github/workflows/ directory\n` +
+          `4. The workflow has workflow_dispatch trigger enabled\n` +
+          `5. GitHub token has proper permissions\n` +
+          `API Message: ${err.message}`,
+      };
+    }
+
+    return { success: false, error: err.message || "Unknown error" };
   }
 }
 
@@ -104,30 +98,38 @@ async function triggerWorkflow(env: Env): Promise<Response> {
 
   // 验证必要的环境变量
   if (!env.GITHUB_REPO) {
-    throw new Error('GITHUB_REPO environment variable is required');
+    throw new Error("GITHUB_REPO environment variable is required");
   }
   if (!env.GITHUB_TOKEN) {
-    throw new Error('GITHUB_TOKEN environment variable is required');
+    throw new Error("GITHUB_TOKEN environment variable is required");
   }
   if (!env.WORKFLOW_FILE) {
-    throw new Error('WORKFLOW_FILE environment variable is required');
+    throw new Error("WORKFLOW_FILE environment variable is required");
   }
 
   const repo = env.GITHUB_REPO;
   const workflowFile = env.WORKFLOW_FILE;
-  const branch = env.GITHUB_BRANCH || 'main';
-  
-  console.log(`[${timestamp}] Config: repo=${repo}, workflow=${workflowFile}, branch=${branch}`);
+  const branch = env.GITHUB_BRANCH || "main";
+
+  console.log(
+    `[${timestamp}] Config: repo=${repo}, workflow=${workflowFile}, branch=${branch}`
+  );
 
   try {
     // 触发 keep-alive workflow
-    const result = await triggerWorkflowByName(repo, workflowFile, branch, env.GITHUB_TOKEN, timestamp);
-    
+    const result = await triggerWorkflowByName(
+      repo,
+      workflowFile,
+      branch,
+      env.GITHUB_TOKEN,
+      timestamp
+    );
+
     if (result.success) {
       const successResponse: SuccessResponse = {
         success: true,
         timestamp,
-        message: 'Workflow triggered successfully',
+        message: "Workflow triggered successfully",
         repo,
         workflowFile,
         branch,
@@ -135,12 +137,12 @@ async function triggerWorkflow(env: Env): Promise<Response> {
       };
       return Response.json(successResponse);
     }
-    
+
     // Workflow 触发失败
     const errorResponse: ErrorResponse = {
       success: false,
       timestamp,
-      error: result.error || 'Failed to trigger workflow',
+      error: result.error || "Failed to trigger workflow",
       config: {
         repo,
         workflowFile,
@@ -151,7 +153,7 @@ async function triggerWorkflow(env: Env): Promise<Response> {
   } catch (error) {
     const err = error as Error;
     console.error(`[${timestamp}] Error:`, err);
-    
+
     const errorResponse: ErrorResponse = {
       success: false,
       timestamp,
@@ -162,7 +164,7 @@ async function triggerWorkflow(env: Env): Promise<Response> {
         branch,
       },
     };
-    
+
     return Response.json(errorResponse, { status: 500 });
   }
 }
@@ -171,18 +173,18 @@ async function triggerWorkflow(env: Env): Promise<Response> {
 const app = new Hono<{ Bindings: Env }>();
 
 // 添加 CORS 支持（可选）
-app.use('/*', cors());
+app.use("/*", cors());
 
 // 健康检查端点
-app.get('/health', (c) => {
+app.get("/health", (c) => {
   return c.json({
-    status: 'ok',
+    status: "ok",
     timestamp: new Date().toISOString(),
   });
 });
 
 // 手动触发 workflow
-app.post('/trigger', async (c) => {
+app.post("/trigger", async (c) => {
   const env = c.env;
   const result = await triggerWorkflow(env);
   return result;
@@ -190,12 +192,12 @@ app.post('/trigger', async (c) => {
 
 // 404 处理
 app.notFound((c) => {
-  return c.json({ error: 'Not Found' }, 404);
+  return c.json({ error: "Not Found" }, 404);
 });
 
 // 错误处理
 app.onError((err, c) => {
-  console.error('Error:', err);
+  console.error("Error:", err);
   return c.json(
     {
       success: false,
