@@ -1,29 +1,34 @@
 import process from "node:process";
-import { Client } from "ssh2";
+import { Client, ConnectConfig } from "ssh2";
+import { getAccessToken, getWorkspaceStatus } from "./api";
 import {
+  ALIST_SPACE_KEY,
   GITHUB_TOKEN,
   REPO_BRANCH,
   REPO_NAME,
   REPO_OWNER,
-  SSH_URL,
 } from "./env";
 import { triggerWorkflow } from "./github";
 
 async function main() {
-  // Simplified parsing for user@host format
-  const parts = SSH_URL.split("@");
-  if (parts.length !== 2) {
-    console.error("Error: SSH_URL must be in format user@host");
+  const accessToken = await getAccessToken(ALIST_SPACE_KEY);
+  const workspace = (await getWorkspaceStatus()).find(
+    (item) => item.spaceKey === ALIST_SPACE_KEY
+  );
+
+  if (!workspace) {
+    console.error("No workspace found");
     process.exit(1);
   }
 
-  const [username, host] = parts;
+  const clusterId = workspace.clusterId;
+  const username = accessToken;
+  const host = `${ALIST_SPACE_KEY}.${clusterId}.ssh.cloudstudio.work`;
   const port = 22; // Default port
 
   console.log(`Connecting to ${username}@${host}:${port}...`);
-
   try {
-    await connectAndRun(host, port, username);
+    await connectAndRun(username, host);
   } catch (error) {
     console.error("SSH Connection/Execution failed:", error);
 
@@ -47,18 +52,13 @@ async function main() {
   }
 }
 
-function connectAndRun(
-  host: string,
-  port: number,
-  username: string
-): Promise<void> {
+function connectAndRun(username: string, host: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const conn = new Client();
 
     // 根据用户说明：SSH链接无需密码和身份验证，因此直接连接
-    const config: any = {
+    const config: ConnectConfig = {
       host,
-      port,
       username,
       tryKeyboard: true, // 尝试键盘交互认证（即使为空）
       readyTimeout: 20000,

@@ -1,20 +1,11 @@
-import { cloudstudio } from "tencentcloud-sdk-nodejs-cloudstudio";
-import { ALIST_SPACE_KEY, SECRET_ID, SECRET_KEY } from "./env";
+import { client } from "./client";
+import { ALIST_SPACE_KEY } from "./env";
 
 enum WorkspaceStatus {
   RUNNING = "RUNNING",
   STOPPED = "STOPPED",
   INVALID = "INVALID",
 }
-
-// 创建客户端对象
-const client = new cloudstudio.v20230508.Client({
-  credential: {
-    secretId: SECRET_ID,
-    secretKey: SECRET_KEY,
-  },
-  region: "ap-shanghai",
-});
 
 // 获取工作空间列表
 const res = await client.DescribeWorkspaces({});
