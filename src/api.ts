@@ -1,12 +1,13 @@
 import { client } from "./client";
 import { ALIST_SPACE_KEY } from "./env";
 
-const token = await client.CreateWorkspaceToken({
+const { Token } = await client.CreateWorkspaceToken({
   SpaceKey: ALIST_SPACE_KEY,
+  Policies: ["all"],
 });
 
 const headers = {
-  Authorization: `${token.Token}`,
+  Authorization: `${Token}`,
 };
 
 interface BaseResponse<T> {
