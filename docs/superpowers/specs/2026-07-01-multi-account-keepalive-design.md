@@ -262,15 +262,15 @@ Cloudflare request body can optionally pass workflow inputs:
 
 If no body is provided, the Worker triggers the workflow with default scheduled behavior.
 
-## Migration Plan
+## 迁移计划
 
-1. Add the new config schema and validation.
-2. Add account-scoped CloudStudio provider creation.
-3. Move existing single-workspace logic behind `WorkspaceController` and `KeepAliveRunner`.
-4. Replace current workflow scripts with one controller entrypoint.
-5. Update Cloudflare Worker only enough to pass optional workflow inputs.
-6. Add summaries, artifacts, and notifications.
-7. Keep old scripts during transition until the controller can run the current single-account case.
+1. 新增配置 schema 和配置校验逻辑。
+2. 新增按账号创建的 CloudStudio provider，让每个腾讯云账号使用自己的凭据和区域配置。
+3. 将现有单工作区逻辑迁移到 `WorkspaceController` 和 `KeepAliveRunner` 后面，先复用当前 alist 保活能力。
+4. 用一个统一的 controller 入口替换当前分散的 workflow 脚本入口。
+5. 只对 Cloudflare Worker 做必要更新，让它可以传递可选的 workflow 输入，不承载账号和工作区控制逻辑。
+6. 增加 GitHub Actions summary、JSON artifact 和通知能力。
+7. 迁移期间保留旧脚本，直到新 controller 能稳定跑通当前单账号 alist 场景后再移除。
 
 ## Testing Strategy
 
