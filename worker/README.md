@@ -2,6 +2,14 @@
 
 使用 Cloudflare Workers 实现更精准的周期任务，替代 GitHub Actions 的 cron。
 
+Worker 入口文件是 `worker/index.ts`，内部按职责拆成：
+
+- `worker/app.ts`：HTTP 路由和错误处理
+- `worker/env.ts`：环境变量校验
+- `worker/github-workflow.ts`：调用 GitHub workflow_dispatch
+- `worker/scheduled.ts`：cron 触发处理
+- `worker/keep-alive.ts`：兼容旧入口的转发文件
+
 ## 功能
 
 - 通过 Cloudflare Workers 的 cron trigger 定期触发
@@ -13,7 +21,7 @@
 ### 1. 安装依赖
 
 ```bash
-pnpm install
+npm install
 ```
 
 ### 2. 登录 Cloudflare
@@ -52,13 +60,13 @@ npx wrangler login
 
 ```bash
 # 开发环境
-pnpm run worker:dev
+npm run worker:dev
 
 # 部署到生产环境
-pnpm run worker:deploy
+npm run worker:deploy
 
 # 或使用生产环境配置
-pnpm run worker:deploy:prod
+npm run worker:deploy:prod
 ```
 
 ## Cron 配置
@@ -135,4 +143,3 @@ curl -X POST https://your-worker.workers.dev/trigger
 2. 确保 workflow 文件在指定的分支上
 3. Cloudflare Workers 免费计划有请求限制，但足够 keep-alive 使用
 4. 环境变量配置后需要重新部署 Worker 才能生效
-

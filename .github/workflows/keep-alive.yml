@@ -33,4 +33,4 @@ jobs:
 
       - name: keep-alive
         id: ssh-keep-alive
-        run: npx tsx src/keep-alive.ts
+        run: npm run keep-alive

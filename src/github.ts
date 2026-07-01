@@ -1,4 +1,10 @@
-import { Octokit } from "@octokit/rest";
+import {
+  triggerWorkflow as dispatchWorkflow,
+  type WorkflowDispatchOptions,
+} from "./github/workflow-dispatcher";
+
+export { triggerWorkflow as dispatchWorkflow } from "./github/workflow-dispatcher";
+export type { WorkflowDispatchOptions } from "./github/workflow-dispatcher";
 
 export async function triggerWorkflow(
   owner: string,
@@ -7,22 +13,12 @@ export async function triggerWorkflow(
   ref: string,
   token: string
 ) {
-  const octokit = new Octokit({ auth: token });
-
-  console.log(
-    `Triggering workflow ${workflowId} in ${owner}/${repo} on branch ${ref}...`
-  );
-
-  try {
-    await octokit.actions.createWorkflowDispatch({
-      owner,
-      repo,
-      workflow_id: workflowId,
-      ref,
-    });
-    console.log("Workflow dispatch request sent.");
-  } catch (error) {
-    console.error("Failed to trigger workflow:", error);
-    throw error;
-  }
+  const options: WorkflowDispatchOptions = {
+    owner,
+    repo,
+    workflowId,
+    ref,
+    token,
+  };
+  return dispatchWorkflow(options);
 }

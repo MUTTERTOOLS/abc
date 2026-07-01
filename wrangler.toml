@@ -1,5 +1,5 @@
 name = "abc"
-main = "worker/keep-alive.ts"
+main = "worker/index.ts"
 compatibility_date = "2024-01-01"
 
 # Cron Triggers - 每9分钟执行一次
@@ -39,4 +39,3 @@ invocation_logs = true
 enabled = false
 persist = true
 head_sampling_rate = 1
-

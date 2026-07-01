@@ -1,11 +1,8 @@
-import { cloudstudio } from "tencentcloud-sdk-nodejs-cloudstudio";
-import { SECRET_ID, SECRET_KEY } from "./env";
+import { createCloudStudioClient } from "./cloudstudio/client";
+import { loadRuntimeConfig } from "./config/runtime-env";
 
-// 创建客户端对象
-export const client = new cloudstudio.v20230508.Client({
-  credential: {
-    secretId: SECRET_ID,
-    secretKey: SECRET_KEY,
-  },
-  region: "ap-shanghai",
-});
+export { createCloudStudioClient } from "./cloudstudio/client";
+
+// Legacy compatibility export for older imports. New code should create a
+// client from explicit runtime config instead of importing this singleton.
+export const client = createCloudStudioClient(loadRuntimeConfig().cloudStudio);

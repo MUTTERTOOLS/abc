@@ -1,60 +1,29 @@
-import { client } from "./client";
-import { ALIST_SPACE_KEY } from "./env";
+import {
+  createCloudStudioHttpApi,
+  type CloudStudioHttpApi,
+} from "./cloudstudio/cloudstudio-http-api";
+import { createCloudStudioClient } from "./cloudstudio/client";
+import { loadRuntimeConfig } from "./config/runtime-env";
 
-const { Token } = await client.CreateWorkspaceToken({
-  SpaceKey: ALIST_SPACE_KEY,
-  Policies: ["all"],
-});
+export { createCloudStudioHttpApi } from "./cloudstudio/cloudstudio-http-api";
+export type { WorkspaceStatus } from "./cloudstudio/cloudstudio-http-api";
 
-const headers = {
-  Authorization: `${Token}`,
-};
+let legacyApi: Promise<CloudStudioHttpApi> | undefined;
 
-interface BaseResponse<T> {
-  code: number;
-  semanticization: "success" | "error";
-  msg: string;
-  data: T;
+async function getLegacyApi() {
+  if (!legacyApi) {
+    const { cloudStudio } = loadRuntimeConfig();
+    const client = createCloudStudioClient(cloudStudio);
+    legacyApi = createCloudStudioHttpApi(client, cloudStudio.spaceKey);
+  }
+
+  return legacyApi;
 }
 
-type GetAccessTokenResponse = BaseResponse<string>;
 export async function getAccessToken(spaceKey: string) {
-  const response = await fetch(
-    `https://ide.cloud.tencent.com/api/user/get-access-token-for-space?spaceKey=${spaceKey}`,
-    {
-      headers,
-    }
-  );
-  const { data, semanticization, msg } =
-    await response.json<GetAccessTokenResponse>();
-
-  if (semanticization === "error") {
-    throw new Error(`Get access token failed: ${msg}`);
-  }
-  return data;
+  return (await getLegacyApi()).getAccessToken(spaceKey);
 }
 
-interface Workspace {
-  id: number;
-  name: string;
-  spaceKey: string;
-  status: "running" | "stopped";
-  description: string;
-  clusterId: string;
-}
-type GetWorkspaceStatusResponse = BaseResponse<Workspace[]>;
 export async function getWorkspaceStatus() {
-  const response = await fetch(
-    `https://ide.cloud.tencent.com/api/workspace/status/list`,
-    {
-      headers,
-    }
-  );
-  const { data, semanticization, msg } =
-    await response.json<GetWorkspaceStatusResponse>();
-
-  if (semanticization === "error") {
-    throw new Error(`Get workspace status failed: ${msg}`);
-  }
-  return data;
+  return (await getLegacyApi()).getWorkspaceStatus();
 }

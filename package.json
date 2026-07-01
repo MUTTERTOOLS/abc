@@ -4,8 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "deploy": "tsx src/deploy.ts",
-    "test": "tsx src/test.ts",
+    "deploy": "tsx src/scripts/deploy-workspace.ts",
+    "keep-alive": "tsx src/scripts/keep-alive-workspace.ts",
+    "test": "npm run typecheck",
+    "typecheck": "tsc --noEmit",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
     "worker:deploy:prod": "wrangler deploy --env production",
